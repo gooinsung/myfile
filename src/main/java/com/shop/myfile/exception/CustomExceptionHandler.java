@@ -17,6 +17,7 @@ public class CustomExceptionHandler {
         log.error(e.getClass().getSimpleName() + " occured");
         log.error("Request URI : {}", request.getRequestURI());
         log.error("Request Method : {}", request.getMethod());
+        log.error(e.getCause().toString());
     }
 
 
@@ -30,6 +31,36 @@ public class CustomExceptionHandler {
                                 .builder()
                                 .code(IO_EXCEPTION.getCode())
                                 .message(IO_EXCEPTION.getMessage())
+                                .detail(e.getMessage())
+                                .build()
+                );
+    }
+
+    @ExceptionHandler(S3Exception.class)
+    protected ResponseEntity<ExceptionResponse> handleS3Exception(S3Exception e, HttpServletRequest request) {
+        errorLogging(e, request);
+        return ResponseEntity
+                .badRequest()
+                .body(
+                        ExceptionResponse
+                                .builder()
+                                .code(e.getCode())
+                                .message(e.getMessage())
+                                .detail(e.getMessage())
+                                .build()
+                );
+    }
+
+    @ExceptionHandler(CustomFileUploadException.class)
+    protected ResponseEntity<ExceptionResponse> handleCustomFileUploadException(CustomFileUploadException e, HttpServletRequest request) {
+        errorLogging(e, request);
+        return ResponseEntity
+                .badRequest()
+                .body(
+                        ExceptionResponse
+                                .builder()
+                                .code(e.getCode())
+                                .message(e.getMessage())
                                 .detail(e.getMessage())
                                 .build()
                 );

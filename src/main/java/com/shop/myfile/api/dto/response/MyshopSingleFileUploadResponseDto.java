@@ -7,8 +7,9 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class MyshopSingleFileResponseDto {
+public class MyshopSingleFileUploadResponseDto {
     private Boolean result;
+    private String originalFileName;
     private String fileUrl;
     private String message;
 }
