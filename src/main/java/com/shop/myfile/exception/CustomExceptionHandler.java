@@ -21,7 +21,7 @@ public class CustomExceptionHandler {
     }
 
 
-    @ExceptionHandler(IOException.class)
+/*    @ExceptionHandler(IOException.class)
     protected ResponseEntity<ExceptionResponse> handleIOException(IOException e, HttpServletRequest request) {
         errorLogging(e, request);
         return ResponseEntity
@@ -34,7 +34,7 @@ public class CustomExceptionHandler {
                                 .detail(e.getMessage())
                                 .build()
                 );
-    }
+    }*/
 
     @ExceptionHandler(S3Exception.class)
     protected ResponseEntity<ExceptionResponse> handleS3Exception(S3Exception e, HttpServletRequest request) {
@@ -51,8 +51,8 @@ public class CustomExceptionHandler {
                 );
     }
 
-    @ExceptionHandler(CustomFileUploadException.class)
-    protected ResponseEntity<ExceptionResponse> handleCustomFileUploadException(CustomFileUploadException e, HttpServletRequest request) {
+    @ExceptionHandler(CustomFileException.class)
+    protected ResponseEntity<ExceptionResponse> handleCustomFileUploadException(CustomFileException e, HttpServletRequest request) {
         errorLogging(e, request);
         return ResponseEntity
                 .badRequest()

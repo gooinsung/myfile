@@ -3,12 +3,12 @@ package com.shop.myfile.exception;
 import lombok.Getter;
 
 @Getter
-public class CustomFileUploadException extends Exception{
+public class CustomFileException extends Exception{
 
     private String code;
     private String message;
 
-    public CustomFileUploadException(CustomFileExceptionCode code){
+    public CustomFileException(CustomFileExceptionCode code){
         super(code.getMessage());
         this.code = code.getCode();
         this.message = code.getMessage();

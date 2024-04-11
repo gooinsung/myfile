@@ -6,15 +6,18 @@ import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.util.IOUtils;
+import com.shop.myfile.api.dto.request.FileDeleteRequestDto;
+import com.shop.myfile.api.dto.request.MyshopFileDeleteRequestDto;
 import com.shop.myfile.api.dto.request.MyshopSingleFileUploadRequestDto;
+import com.shop.myfile.api.dto.response.FileDeleteResponseDto;
+import com.shop.myfile.api.dto.response.MyshopFileDeleteResponseDto;
 import com.shop.myfile.api.dto.response.MyshopSingleFileUploadResponseDto;
+import com.shop.myfile.exception.CustomFileException;
 import com.shop.myfile.exception.CustomFileExceptionCode;
-import com.shop.myfile.exception.CustomFileUploadException;
 import com.shop.myfile.exception.S3Exception;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -23,6 +26,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static com.shop.myfile.exception.CustomFileExceptionCode.FILE_DELETE_EXCEPTION;
@@ -40,7 +45,7 @@ public class MyshopS3Service {
      *
      * @param requestDto
      */
-    public MyshopSingleFileUploadResponseDto upload(MyshopSingleFileUploadRequestDto requestDto) throws CustomFileUploadException {
+    public MyshopSingleFileUploadResponseDto upload(MyshopSingleFileUploadRequestDto requestDto) throws CustomFileException {
 
         MyshopSingleFileUploadRequestDto.requestValidation(requestDto);
 
@@ -54,19 +59,21 @@ public class MyshopS3Service {
 
     public String uploadImage(MyshopSingleFileUploadRequestDto requestDto) {
         try {
-            return this.uploadImageToS3(requestDto.getFile(), requestDto.getBucket());
+            return this.uploadImageToS3(requestDto);
         } catch (IOException e) {
             throw new S3Exception(CustomFileExceptionCode.FAIL);
         }
     }
 
-    public String uploadImageToS3(MultipartFile file, String bucket) throws IOException {
-        String originalFileName = file.getOriginalFilename();
+    public String uploadImageToS3(MyshopSingleFileUploadRequestDto requestDto) throws IOException {
+        String originalFileName = requestDto.getFile().getOriginalFilename();
         String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
 
-        String s3FileName = UUID.randomUUID().toString().substring(0, 10) + originalFileName;
+        String s3FileName = (requestDto.getFileFolderPath() != null ?
+                (requestDto.getFileFolderPath() + "/") :
+                "") + (UUID.randomUUID().toString().substring(0, 10) + originalFileName);
 
-        InputStream is = file.getInputStream();
+        InputStream is = requestDto.getFile().getInputStream();
         byte[] bytes = IOUtils.toByteArray(is);
 
         ObjectMetadata metadata = new ObjectMetadata();
@@ -77,7 +84,7 @@ public class MyshopS3Service {
 
         try {
             PutObjectRequest putObjectRequest =
-                    new PutObjectRequest(bucket, s3FileName, byteArrayInputStream, metadata)
+                    new PutObjectRequest(requestDto.getBucket(), s3FileName, byteArrayInputStream, metadata)
                             .withCannedAcl(CannedAccessControlList.PublicRead);
 
             amazonS3.putObject(putObjectRequest);
@@ -89,16 +96,40 @@ public class MyshopS3Service {
             is.close();
         }
 
-        return amazonS3.getUrl(bucket, s3FileName).toString();
+        return amazonS3.getUrl(requestDto.getBucket(), s3FileName).toString();
     }
 
-    public void deleteFileFromS3(String fileUrl, String bucket) {
-        String key = getFromFileUrl(fileUrl);
+    public MyshopFileDeleteResponseDto deleteFiles(MyshopFileDeleteRequestDto requestDto) {
+        List<FileDeleteResponseDto> result = new ArrayList<>();
+        requestDto.getFileDeleteRequestDtoList().forEach(x-> result.add(deleteFile(x)));
+        return MyshopFileDeleteResponseDto
+                .builder()
+                .fileDeleteResponseDtoList(result)
+                .build();
+    }
+
+    public FileDeleteResponseDto deleteFile(FileDeleteRequestDto request){
+        return this.deleteFileFromS3(request);
+    }
+
+    public FileDeleteResponseDto deleteFileFromS3(FileDeleteRequestDto request) {
+        String key = getFromFileUrl(request.getFilePath());
 
         try {
-            amazonS3.deleteObject(new DeleteObjectRequest(bucket, key));
+            amazonS3.deleteObject(new DeleteObjectRequest(request.getBucket(), key));
+            return FileDeleteResponseDto
+                    .builder()
+                    .originalFileName(request.getOriginalFileName())
+                    .isDeleted(Boolean.TRUE)
+                    .build();
         } catch (Exception e) {
-            throw new S3Exception(FILE_DELETE_EXCEPTION);
+            log.error("Error occur in deleteFileFromS3");
+            log.error("Url : {}", key);
+            return FileDeleteResponseDto
+                    .builder()
+                    .originalFileName(request.getOriginalFileName())
+                    .isDeleted(Boolean.FALSE)
+                    .build();
         }
     }
 
